@@ -13,6 +13,45 @@
 
 'use strict';
 
+var https = require('https');
+var http  = require('http');
+var url   = require('url');
+
+/**
+ * Make an HTTP/HTTPS request that streams the response body.
+ * Returns a promise that resolves when the stream ends.
+ * onData(chunk: string) is called for each decoded text chunk.
+ * onStatus(statusCode) is called once headers arrive.
+ */
+function streamRequest(endpoint, opts, bodyStr, onStatus, onData) {
+  return new Promise(function(resolve, reject) {
+    var parsed   = url.parse(endpoint);
+    var isHttps  = parsed.protocol === 'https:';
+    var reqOpts  = {
+      hostname: parsed.hostname,
+      port:     parsed.port || (isHttps ? 443 : 80),
+      path:     parsed.path || '/',
+      method:   opts.method || 'POST',
+      headers:  opts.headers || {},
+      rejectUnauthorized: opts.rejectUnauthorized !== false // true by default
+    };
+
+    var transport = isHttps ? https : http;
+    var req = transport.request(reqOpts, function(res) {
+      onStatus(res.statusCode, res);
+      res.on('data', function(chunk) {
+        onData(chunk.toString('utf8'));
+      });
+      res.on('end', resolve);
+      res.on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
 module.exports = {
   name: 'openai2',
   description: 'OpenAI-compatible chat completion',
@@ -20,90 +59,71 @@ module.exports = {
   handle: async function(text, context, callbacks) {
 
     callbacks.log('init');
-    
-    const p          = context.params || {};
-    const baseUrl    = p.url    || 'https://api.openai.com';
-    const model      = p.model  || 'gpt-4o-mini';
-    const apiKey     = p.apiKey || '';
-    const sysPrompt  = p.systemPrompt || null;
-    const verifySSL  = (typeof p.verifySSL === 'boolean') ? p.verifySSL : true;
 
-    const messages = [];
+    var p          = context.params || {};
+    var baseUrl    = p.url    || 'https://api.openai.com';
+    var model      = p.model  || 'gpt-4o-mini';
+    var apiKey     = p.apiKey || '';
+    var sysPrompt  = p.systemPrompt || null;
+    var verifySSL  = (typeof p.verifySSL === 'boolean') ? p.verifySSL : true;
+
+    var messages = [];
     if (sysPrompt) messages.push({ role: 'system', content: sysPrompt });
     messages.push({ role: 'user', content: text });
 
-    const bodyObj = { model: model, messages: messages, stream: true };
-    const bodyStr = JSON.stringify(bodyObj);
-    const endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
+    var bodyObj  = { model: model, messages: messages, stream: true };
+    var bodyStr  = JSON.stringify(bodyObj);
+    var endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
 
-    const headers = {
+    var headers = {
       'Content-Type':   'application/json',
       'Content-Length': Buffer.byteLength(bodyStr)
     };
     if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
 
-    // Node 18+ fetch, with agent for SSL
-    if (endpoint.startsWith('https://') && verifySSL === false) {
-         process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    }
-
-
-    const fetchOpts = {
-      method: 'POST',
-      headers,
-      body: bodyStr,
-    };
-
     try {
-      // Always streaming mode: parse SSE lines and call callbacks.onResult for each delta
-      try {
-        const res = await fetch(endpoint, fetchOpts);
-        if (!res.ok) {
-          const text = await res.text();
-          callbacks.onResult('[ERROR] HTTP ' + res.status + ': ' + text);
-          return { error: 'HTTP ' + res.status + ': ' + text };
-        }
-        const reader = res.body.getReader();
-        let buffer = '';
-        let done = false;
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += Buffer.from(value).toString('utf8');
-            let lines = buffer.split(/\r?\n/);
-            buffer = lines.pop(); // last line may be incomplete
-            for (let line of lines) {
-              if (line.startsWith('data: ')) {
-                let data = line.slice(6).trim();
-                if (data === '[DONE]') continue;
-                try {
-                  let parsed = JSON.parse(data);
-                  let delta = parsed.choices && parsed.choices[0].delta && parsed.choices[0].delta.content;
-                  if (delta) callbacks.onResult(delta);
-                } catch (e) {}
-              }
-            }
+      var statusCode = 200;
+      var statusRes  = null;
+      var buffer     = '';
+
+      await streamRequest(
+        endpoint,
+        { method: 'POST', headers: headers, rejectUnauthorized: verifySSL },
+        bodyStr,
+        function(code, res) { statusCode = code; statusRes = res; },
+        function(chunk) {
+          buffer += chunk;
+          var lines = buffer.split(/\r?\n/);
+          buffer = lines.pop(); // keep incomplete trailing line
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (!line.startsWith('data: ')) continue;
+            var data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+            try {
+              var parsed  = JSON.parse(data);
+              var delta   = parsed.choices &&
+                            parsed.choices[0].delta &&
+                            parsed.choices[0].delta.content;
+              if (delta) callbacks.onResult(delta);
+            } catch (e) {}
           }
         }
-        return { result: null };
-      } catch (err) {
-        // Log full error context to server console for debugging
-        console.error('[OpenAI plugin] Fetch failed:', {
-          endpoint,
-          fetchOpts,
-          error: err
-        });
-        callbacks.onResult('[ERROR] Fetch failed: ' + (err && err.message ? err.message : String(err)) + (err && err.stack ? ('\n' + err.stack) : '') + '\nEndpoint: ' + endpoint + '\nFetchOpts: ' + JSON.stringify(fetchOpts));
-        return {
-          error: 'Fetch failed: ' + (err && err.message ? err.message : String(err)),
-          stack: err && err.stack ? err.stack : undefined,
-          endpoint,
-          fetchOpts: JSON.stringify(fetchOpts)
-        };
+      );
+
+      if (statusCode < 200 || statusCode >= 300) {
+        var errMsg = '[ERROR] HTTP ' + statusCode;
+        callbacks.onResult(errMsg);
+        return { error: errMsg };
       }
+
+      return { result: null };
+
     } catch (err) {
-      return { error: 'Fetch failed: ' + (err && err.message ? err.message : String(err)), stack: err && err.stack ? err.stack : undefined };
+      var msg = 'Fetch failed: ' + (err && err.message ? err.message : String(err));
+      console.error('[OpenAI plugin]', msg, '\nEndpoint:', endpoint, '\n', err);
+      callbacks.onResult('[ERROR] ' + msg + '\nEndpoint: ' + endpoint);
+      return { error: msg, stack: err && err.stack ? err.stack : undefined };
     }
   }
 };
