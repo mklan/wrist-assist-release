@@ -1,5 +1,5 @@
 module.exports = {
-  name: 'echo',
+  name: 'debug',
   description: 'Echo input text with Node.js runtime stats (no network)',
 
   handle: async function(text, context) {
