@@ -1,5 +1,5 @@
 module.exports = {
-  name: 'note',
+  name: 'note2',
   description: 'Creates a new note',
 
   handle: async function(text, context) {
