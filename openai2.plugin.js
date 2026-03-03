@@ -18,18 +18,25 @@ module.exports = {
   description: 'OpenAI-compatible chat completion',
 
   handle: async function(text, context, callbacks) {
-
-    callbacks.log('openai');
-    
     const p          = context.params || {};
     const baseUrl    = p.url    || 'https://api.openai.com';
     const model      = p.model  || 'gpt-4o-mini';
     const apiKey     = p.apiKey || '';
     const sysPrompt  = p.systemPrompt || null;
 
-    const messages = [];
-    if (sysPrompt) messages.push({ role: 'system', content: sysPrompt });
-    messages.push({ role: 'user', content: p.query });
+    // Use context.messages for multi-turn chat if present, otherwise build messages from sysPrompt and text
+    let messages;
+    if (context.messages && Array.isArray(context.messages) && context.messages.length > 0) {
+      messages = context.messages.slice();
+      // Optionally inject system prompt if not present
+      if (sysPrompt && messages[0].role !== 'system') {
+        messages.unshift({ role: 'system', content: sysPrompt });
+      }
+    } else {
+      messages = [];
+      if (sysPrompt) messages.push({ role: 'system', content: sysPrompt });
+      messages.push({ role: 'user', content: text });
+    }
 
     const bodyObj = { model: model, messages: messages, stream: true };
     const bodyStr = JSON.stringify(bodyObj);
@@ -85,6 +92,7 @@ module.exports = {
             }
           }
         }
+        return null; // all content already streamed via onResult
       } catch (err) {
         // Log full error context to server console for debugging
         console.error('[OpenAI plugin] Fetch failed:', {
