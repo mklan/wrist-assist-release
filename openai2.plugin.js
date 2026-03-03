@@ -85,7 +85,6 @@ module.exports = {
             }
           }
         }
-        return { result: null };
       } catch (err) {
         // Log full error context to server console for debugging
         console.error('[OpenAI plugin] Fetch failed:', {
