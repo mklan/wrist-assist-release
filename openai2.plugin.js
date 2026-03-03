@@ -18,6 +18,9 @@ module.exports = {
   description: 'OpenAI-compatible chat completion',
 
   handle: async function(text, context, callbacks) {
+
+    callbacks.log('openai');
+    
     const p          = context.params || {};
     const baseUrl    = p.url    || 'https://api.openai.com';
     const model      = p.model  || 'gpt-4o-mini';
@@ -26,7 +29,7 @@ module.exports = {
 
     const messages = [];
     if (sysPrompt) messages.push({ role: 'system', content: sysPrompt });
-    messages.push({ role: 'user', content: text });
+    messages.push({ role: 'user', content: p.query });
 
     const bodyObj = { model: model, messages: messages, stream: true };
     const bodyStr = JSON.stringify(bodyObj);
