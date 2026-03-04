@@ -1,1 +1,1 @@
-# wrist-assist-release
+# wrist-assist-plugins

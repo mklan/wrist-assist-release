@@ -1,0 +1,22 @@
+{
+  "name": "wrist-assist-plugins",
+  "version": "1.0.0",
+  "description": "TypeScript plugins for Wrist Assist",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "build:missing": "node scripts/build-missing.js"
+  },
+  "keywords": [
+    "plugins",
+    "wrist-assist"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "typescript": "^5.3.3"
+  }
+}
