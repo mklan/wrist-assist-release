@@ -19,19 +19,23 @@ const plugin: Plugin = {
     if (!time) {
       return { result: null, error: "Time is required" };
     }
-    // Android Intent for setting alarm
-    const intent = {
-      action: "com.android.alarmclock.SET_ALARM",
-      extras: {
-        "android.intent.extra.alarm.HOUR": parseInt(time.split(":")[0], 10),
-        "android.intent.extra.alarm.MINUTES": parseInt(time.split(":")[1], 10),
-        ...(message ? { "android.intent.extra.alarm.MESSAGE": message } : {}),
-      },
-    };
-    await hooks.intent(intent.action, { extras: intent.extras });
-    await hooks.log(`Alarm intent sent for ${time}`);
+
+    // Try sending a reminder intent (Wear OS)
+    if (hooks.intent) {
+      const reminderIntent = {
+        action: "com.google.android.clockwork.reminders.CREATE_REMINDER",
+        extras: {
+          reminder_time: time,
+          ...(message ? { reminder_message: message } : {}),
+        },
+      };
+      await hooks.intent(reminderIntent.action, {
+        extras: reminderIntent.extras,
+      });
+      await hooks.log(`Reminder intent sent for ${time}`);
+    }
     return {
-      result: `Alarm set for ${time}${message ? ` with message: ${message}` : ""}`,
+      result: `Notification and reminder intent sent for ${time}${message ? ` with message: ${message}` : ""}`,
     };
   },
 };
