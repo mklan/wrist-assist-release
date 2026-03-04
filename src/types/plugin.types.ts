@@ -86,6 +86,25 @@ export interface PluginHooks {
     targetName: string,
     overrides?: Partial<PluginContext>,
   ): Promise<unknown>;
+  /**
+   * Evaluate a JS function string with the given arguments and return its result.
+   *
+   * Useful for applying user-defined transforms without writing a new plugin.
+   * The function string must evaluate to a callable (arrow function or `function`
+   * expression).
+   *
+   * @param fnString  JS expression that evaluates to a function, e.g. `"(text) => text.toUpperCase()"`
+   * @param args      Arguments forwarded to the evaluated function
+   * @returns         Whatever the function returns (Promises are awaited automatically)
+   *
+   * @example
+   *   const upper = await hooks.eval("(text) => text.toUpperCase()", context.text);
+   *   const body  = await hooks.eval(
+   *     "(ctx) => ({ text: ctx.text, lang: ctx.options.lang })",
+   *     context
+   *   );
+   */
+  eval(fnString: string, ...args: unknown[]): Promise<unknown>;
 }
 
 export interface IntentOptions {

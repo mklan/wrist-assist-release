@@ -13,8 +13,13 @@
  */
 const plugin = {
     name: "http_request",
-    description: "Forward to HTTP endpoint or echo (no endpoint configured)",
+    description: "Forward to HTTP endpoint",
     options: {
+        transformContext: {
+            type: "string",
+            label: "Context Transformer (JS)",
+            description: "Optional JS function as a string. It will be evaluated and called with the context, and its return value will be deep merged into the current context.",
+        },
         url: {
             type: "string",
             label: "Endpoint URL",
@@ -47,12 +52,13 @@ const plugin = {
             description: 'If responseType is "json", an optional dot-separated path to extract a specific field from the JSON response, e.g. "choices.0.text".',
         },
     },
-    handle: async function (context) {
-        const options = context.options;
-        if (!options || !options.url) {
-            // No endpoint – echo back so the watch UI receives a response.
-            return { result: context.text };
+    handle: async function (context, hooks) {
+        if (context.options?.transformContext) {
+            context = (await hooks.eval(context.options.transformContext, {
+                context,
+            }));
         }
+        const { options } = context;
         const method = (options.method || "POST").toUpperCase();
         const headers = {
             "Content-Type": "application/json",
@@ -60,19 +66,31 @@ const plugin = {
         };
         let url = options.url;
         let body = null;
+        // Define bodyObj once for both GET and non-GET
+        const bodyObj = options.body
+            ? options.body
+            : {
+                text: context.text,
+                params: context.params,
+                options: context.options,
+                timestamp: Date.now(),
+            };
         if (method === "GET") {
+            // Use URLSearchParams for functional and standard conversion
+            const params = new URLSearchParams(typeof bodyObj === "object" && bodyObj !== null
+                ? Object.entries(bodyObj).reduce((acc, [key, value]) => {
+                    // Flatten nested objects as JSON strings
+                    acc[key] =
+                        typeof value === "object"
+                            ? JSON.stringify(value)
+                            : String(value);
+                    return acc;
+                }, {})
+                : { text: String(bodyObj) });
             const hasQuery = url.indexOf("?") !== -1;
-            url += `${hasQuery ? "&" : "?"}text=${encodeURIComponent(context.text)}`;
+            url += `${hasQuery ? "&" : "?"}${params.toString()}`;
         }
         else {
-            const bodyObj = options.body
-                ? options.body
-                : {
-                    text: context.text,
-                    params: context.params,
-                    options: context.options,
-                    timestamp: Date.now(),
-                };
             body = JSON.stringify(bodyObj);
         }
         try {
