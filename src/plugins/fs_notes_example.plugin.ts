@@ -32,21 +32,12 @@ const plugin: Plugin = {
     context: Context,
     hooks: PluginHooks,
   ): Promise<PluginResult> {
-    const { action, note, filename } = context.options;
-    if (action === "create") {
-      const fname = `note_${Date.now()}.txt`;
-      await hooks.fs.write(fname, note || "");
-      await hooks.log("Note created:", fname);
-      return { result: `Note saved as ${fname}` };
-    } else if (action === "list") {
-      const files = await hooks.fs.list();
-      return { result: `Notes: "${files.join(", ")}"` };
-    } else if (action === "read") {
-      if (!filename) return { result: null, error: "Filename required" };
-      const content = await hooks.fs.read(filename);
-      return { result: `Content of ${filename}:\n${content}` };
-    }
-    return { result: null, error: "Unknown action" };
+    const { note } = context.options;
+    const fname = `note_${Date.now()}.txt`;
+    await hooks.fs.write(fname, note || "");
+    await hooks.log("Note created:", fname);
+    const files = await hooks.fs.list();
+    return `Notes: "${files.join(", ")}"`;
   },
 };
 
