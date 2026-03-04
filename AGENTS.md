@@ -12,7 +12,7 @@ This repository contains plugins (agents) for the Wear OS app **Wrist-Ops**. The
 
 - Each plugin exports a standard object with properties such as `name`, `description`, `options`, and a `handle` function.
 - The `handle` function receives two arguments: `context` (user input and options) and `hooks` (system-provided utilities).
-- **Hooks are always passed by the system and guaranteed to be available at all times.** Plugins can rely on hooks for logging, filesystem access, intent triggering, and other system interactions.
+- **Hooks are always passed by the system and guaranteed to be available at all times.** Plugins can rely on hooks for logging, filesystem access, intent triggering, and other system interactions. You do not need to check if a hook is available; it is always provided by the system.
 - When a regex pattern extracts named groups (e.g. time, message), these values are automatically passed into `context.params` for use by the plugin.
 
 ## Repository Location
