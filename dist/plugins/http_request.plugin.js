@@ -56,7 +56,7 @@ const plugin = {
         const method = (options.method || "POST").toUpperCase();
         const headers = {
             "Content-Type": "application/json",
-            ...(options.headers ? JSON.parse(options.headers) : {}),
+            ...(options.headers ? options.headers : {}),
         };
         let url = options.url;
         let body = null;
@@ -66,8 +66,13 @@ const plugin = {
         }
         else {
             const bodyObj = options.body
-                ? JSON.parse(options.body)
-                : { text: context.text, timestamp: Date.now() };
+                ? options.body
+                : {
+                    text: context.text,
+                    params: context.params,
+                    options: context.options,
+                    timestamp: Date.now(),
+                };
             body = JSON.stringify(bodyObj);
         }
         try {

@@ -63,7 +63,7 @@ const plugin: Plugin = {
     const method = (options.method || "POST").toUpperCase();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(options.headers ? JSON.parse(options.headers) : {}),
+      ...(options.headers ? options.headers : {}),
     };
     let url = options.url;
     let body: string | null = null;
@@ -73,8 +73,13 @@ const plugin: Plugin = {
       url += `${hasQuery ? "&" : "?"}text=${encodeURIComponent(context.text)}`;
     } else {
       const bodyObj = options.body
-        ? JSON.parse(options.body)
-        : { text: context.text, timestamp: Date.now() };
+        ? options.body
+        : {
+            text: context.text,
+            params: context.params,
+            options: context.options,
+            timestamp: Date.now(),
+          };
       body = JSON.stringify(bodyObj);
     }
 
