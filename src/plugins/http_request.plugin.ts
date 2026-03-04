@@ -11,41 +11,69 @@
  * local testing).
  */
 
-interface Endpoint {
-  url: string;
-  method?: string;
-  headers?: Record<string, string>;
-  body?: Record<string, any>;
-  responseType?: string;
-}
-
 import { Context, PluginResult, Plugin } from "../types/plugin.types";
 
 const plugin: Plugin = {
   name: "http_request",
   description: "Forward to HTTP endpoint or echo (no endpoint configured)",
-
+  options: {
+    url: {
+      type: "string",
+      label: "Endpoint URL",
+      description:
+        "The URL to forward the request to. If not set, the plugin will just echo the input text.",
+    },
+    method: {
+      type: "string",
+      label: "HTTP Method",
+      description: "HTTP method to use (default: POST)",
+    },
+    headers: {
+      type: "string",
+      label: "HTTP Headers (JSON)",
+      description:
+        'Optional HTTP headers as a JSON string, e.g. \'{"Authorization": "Bearer ..."}\'',
+    },
+    body: {
+      type: "string",
+      label: "Request Body (JSON)",
+      description:
+        'Optional request body as a JSON string. If not set, defaults to {"text": "<input text>", "timestamp": <current time>}.',
+    },
+    responseType: {
+      type: "string",
+      label: "Response Type",
+      description:
+        'Expected response type: "text" or "json" (default: "text"). If "json" is selected and the response is JSON, it will be parsed before being returned.',
+    },
+    resultPath: {
+      type: "string",
+      label: "Result Path",
+      description:
+        'If responseType is "json", an optional dot-separated path to extract a specific field from the JSON response, e.g. "choices.0.text".',
+    },
+  },
   handle: async function (context: Context): Promise<PluginResult> {
-    const ep = context.options;
-    if (!ep || !ep.url) {
+    const options = context.options;
+    if (!options || !options.url) {
       // No endpoint – echo back so the watch UI receives a response.
       return { result: context.text };
     }
 
-    const method = (ep.method || "POST").toUpperCase();
+    const method = (options.method || "POST").toUpperCase();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(ep.headers || {}),
+      ...(options.headers ? JSON.parse(options.headers) : {}),
     };
-    let url = ep.url;
+    let url = options.url;
     let body: string | null = null;
 
     if (method === "GET") {
       const hasQuery = url.indexOf("?") !== -1;
       url += `${hasQuery ? "&" : "?"}text=${encodeURIComponent(context.text)}`;
     } else {
-      const bodyObj = ep.body
-        ? ep.body
+      const bodyObj = options.body
+        ? JSON.parse(options.body)
         : { text: context.text, timestamp: Date.now() };
       body = JSON.stringify(bodyObj);
     }
@@ -57,11 +85,22 @@ const plugin: Plugin = {
         body,
       });
 
-      const responseType = (ep.responseType || "text").toLowerCase();
+      const responseType = (options.responseType || "text").toLowerCase();
       let result: any;
 
       if (responseType === "json") {
         result = await response.json();
+        if (options.resultPath) {
+          const pathParts = options.resultPath.split(".");
+          for (const part of pathParts) {
+            if (result && part in result) {
+              result = result[part];
+            } else {
+              result = undefined;
+              break;
+            }
+          }
+        }
       } else {
         result = await response.text();
       }
