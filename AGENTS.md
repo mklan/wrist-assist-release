@@ -8,7 +8,6 @@ This repository contains plugins (agents) for the Wear OS app **Wrist-Ops**. The
 - **Execution:** When triggered, the plugin runs on the device, providing extended functionality to the Wrist-Ops app.
 - **Distribution:** Plugins are downloaded dynamically to the watch as needed.
 
-
 ## Plugin Structure
 
 - Each plugin exports a standard object with properties such as `name`, `description`, `options`, and a `handle` function.

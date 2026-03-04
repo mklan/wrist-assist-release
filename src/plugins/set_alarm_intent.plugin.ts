@@ -9,21 +9,8 @@ const plugin: Plugin = {
   name: "set_alarm_intent",
   description:
     "Triggers an Android Intent to set an alarm at the provided time.",
-  options: {
-    time: {
-      type: "string",
-      label: "Alarm Time",
-      description: "Time for the alarm in HH:mm format (e.g. 07:30)",
-      required: true,
-    },
-    message: {
-      type: "string",
-      label: "Alarm Message",
-      description: "Optional message to display with the alarm.",
-    },
-  },
   examplePattern:
-    "^set alarm for (?<time>\\d{1,2}:\\d{2})(?: with message (?<message>.+))?",
+    "^(?:set alarm for|Alarm um) (?<time>\\d{1,2}:\\d{2})(?: Uhr)?(?: mit Nachricht (?<message>.+))?",
   handle: async function (
     context: Context,
     hooks: PluginHooks,
