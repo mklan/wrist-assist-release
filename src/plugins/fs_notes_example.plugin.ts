@@ -10,22 +10,10 @@ const plugin: Plugin = {
   description:
     "Demo: Create, list, and read notes using the plugin_data filesystem.",
   options: {
-    action: {
-      type: "string",
-      label: "Action",
-      description: "create, list, or read",
-      required: true,
-      enum: ["create", "list", "read"],
-    },
     note: {
       type: "string",
       label: "Note Text",
       description: "Text to save as a note (for create)",
-    },
-    filename: {
-      type: "string",
-      label: "Filename",
-      description: "Filename to read (for read)",
     },
   },
   handle: async function (
@@ -36,6 +24,8 @@ const plugin: Plugin = {
     const fname = `note_${Date.now()}.txt`;
     await hooks.fs.write(fname, note || "");
     await hooks.log("Note created:", fname);
+    const content = await hooks.fs.read(fname);
+    hooks.log(`Content of ${fname}: ${content}`);
     const files = await hooks.fs.list();
     return `Notes: "${files.join(", ")}"`;
   },
