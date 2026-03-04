@@ -14,7 +14,7 @@
 const plugin = {
     name: "openai2",
     description: "OpenAI-compatible chat completion",
-    handle: async function (context, callbacks) {
+    handle: async function (context, hooks) {
         const p = context.params || {};
         const o = context.options || {};
         const baseUrl = o.url || p.url || "https://api.openai.com";
@@ -47,15 +47,15 @@ const plugin = {
         };
         if (apiKey)
             headers["Authorization"] = "Bearer " + apiKey;
-        if (callbacks)
-            callbacks.log("options", o);
+        if (hooks?.log)
+            hooks.log("options", o);
         const fetchOpts = {
             method: "POST",
             headers,
             body: bodyStr,
         };
         try {
-            // Always streaming mode: parse SSE lines and call callbacks.onResult for each delta
+            // Always streaming mode: parse SSE lines and call hooks.onResult for each delta
             try {
                 const res = await fetch(endpoint, fetchOpts);
                 if (!res.ok) {
@@ -83,9 +83,9 @@ const plugin = {
                                 try {
                                     const parsed = JSON.parse(data);
                                     const delta = parsed.choices?.[0]?.delta?.content;
-                                    if (delta && callbacks) {
-                                        callbacks.onResult(delta);
-                                        callbacks.log(delta);
+                                    if (delta && hooks?.onResult) {
+                                        hooks.onResult(delta);
+                                        hooks.log(delta);
                                     }
                                 }
                                 catch (e) {

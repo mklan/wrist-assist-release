@@ -11,17 +11,28 @@ export interface PluginResult {
     result: any;
     error?: string;
 }
+export type PluginOptionType = "string" | "boolean" | "number";
+export interface PluginOptionDescriptor {
+    type: PluginOptionType;
+    label: string;
+    description?: string;
+    default?: string | boolean | number;
+    required?: boolean;
+    enum?: Array<string | number | boolean>;
+}
+export type PluginOptionsSchema = Record<string, PluginOptionDescriptor>;
 export interface Plugin {
     name: string;
     description: string;
-    handle: (context: Context, callbacks?: PluginCallbacks) => Promise<PluginResult | null>;
+    options?: PluginOptionsSchema;
+    handle: (context: Context, hooks?: PluginHooks) => Promise<PluginResult | null>;
 }
 export interface Message {
     role: "system" | "user" | "assistant";
     content: string;
 }
-export interface PluginCallbacks {
-    log: (prefix: string, data?: any) => void;
-    onResult: (delta: string) => void;
+export interface PluginHooks {
+    log: (...data: any) => Promise<void>;
+    onResult?: (delta: string) => void;
 }
 //# sourceMappingURL=plugin.types.d.ts.map

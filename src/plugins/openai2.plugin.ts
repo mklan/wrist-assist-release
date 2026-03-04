@@ -15,7 +15,7 @@ import {
   Context,
   PluginResult,
   Plugin,
-  PluginCallbacks,
+  PluginHooks,
   Message,
 } from "../types/plugin.types";
 
@@ -25,7 +25,7 @@ const plugin: Plugin = {
 
   handle: async function (
     context: Context,
-    callbacks?: PluginCallbacks,
+    hooks?: PluginHooks,
   ): Promise<PluginResult | null> {
     const p = context.params || {};
     const o = context.options || {};
@@ -63,7 +63,7 @@ const plugin: Plugin = {
     };
     if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
 
-    if (callbacks) callbacks.log("options", o);
+    if (hooks?.log) hooks.log("options", o);
 
     const fetchOpts = {
       method: "POST",
@@ -72,7 +72,7 @@ const plugin: Plugin = {
     };
 
     try {
-      // Always streaming mode: parse SSE lines and call callbacks.onResult for each delta
+      // Always streaming mode: parse SSE lines and call hooks.onResult for each delta
       try {
         const res = await fetch(endpoint, fetchOpts);
         if (!res.ok) {
@@ -101,9 +101,9 @@ const plugin: Plugin = {
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content;
-                  if (delta && callbacks) {
-                    callbacks.onResult(delta);
-                    callbacks.log(delta);
+                  if (delta && hooks?.onResult) {
+                    hooks.onResult(delta);
+                    hooks.log(delta);
                   }
                 } catch (e) {
                   // Silently skip malformed JSON lines

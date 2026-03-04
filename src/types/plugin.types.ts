@@ -14,12 +14,26 @@ export interface PluginResult {
   error?: string;
 }
 
+export type PluginOptionType = "string" | "boolean" | "number";
+
+export interface PluginOptionDescriptor {
+  type: PluginOptionType;
+  label: string;
+  description?: string;
+  default?: string | boolean | number;
+  required?: boolean;
+  enum?: Array<string | number | boolean>;
+}
+
+export type PluginOptionsSchema = Record<string, PluginOptionDescriptor>;
+
 export interface Plugin {
   name: string;
   description: string;
+  options?: PluginOptionsSchema;
   handle: (
     context: Context,
-    callbacks?: PluginCallbacks,
+    hooks?: PluginHooks,
   ) => Promise<PluginResult | null>;
 }
 
@@ -28,7 +42,7 @@ export interface Message {
   content: string;
 }
 
-export interface PluginCallbacks {
-  log: (prefix: string, data?: any) => void;
-  onResult: (delta: string) => void;
+export interface PluginHooks {
+  log: (...data: any) => Promise<void>;
+  onResult?: (delta: string) => void;
 }
