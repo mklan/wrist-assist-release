@@ -21,10 +21,22 @@ export interface PluginOptionDescriptor {
     enum?: Array<string | number | boolean>;
 }
 export type PluginOptionsSchema = Record<string, PluginOptionDescriptor>;
+/**
+ * Specification for a single named regex capture expected in context.params.
+ */
+export interface PluginParamDescriptor {
+    label?: string;
+    description?: string;
+    /** When true the server throws if this param is absent. */
+    required?: boolean;
+}
+export type PluginParamsSchema = Record<string, PluginParamDescriptor>;
 export interface Plugin {
     name: string;
     description: string;
     options?: PluginOptionsSchema;
+    /** Declarative schema for named regex captures (context.params). */
+    params?: PluginParamsSchema;
     examplePattern?: string;
     handle: (context: Context, hooks: PluginHooks) => Promise<PluginResult | null>;
 }
