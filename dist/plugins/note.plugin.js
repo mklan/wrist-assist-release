@@ -16,11 +16,17 @@ const plugin = {
             description: "Your API key for authentication",
             required: true,
         },
+        endpoint: {
+            type: "string",
+            label: "API Endpoint",
+            description: "The endpoint URL for the note API",
+            required: true,
+        },
     },
     handle: async function (context) {
         const { note } = context.params || {};
-        const { apiKey } = context.options || {};
-        const res = await fetch("https://startpage-api.klanm.at/note", {
+        const { apiKey, endpoint } = context.options || {};
+        const res = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
